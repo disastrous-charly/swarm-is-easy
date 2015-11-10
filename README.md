@@ -17,3 +17,6 @@ Think to fill the "common name" field with the hostname of your machine.
 [His blog for explanation on how docker with TLS works](http://sheerun.net/2014/05/17/remote-access-to-docker-with-tls/)
 
 [His script to securize docker](https://gist.github.com/sheerun/ccdeff92ea1668f3c75f)
+
+
+Special thanks to [Armand Grillet](https://github.com/ArmandGrillet) for loosing his hair trying to solve this problem.
