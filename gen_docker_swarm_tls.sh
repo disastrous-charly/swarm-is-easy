@@ -70,23 +70,25 @@ ssh -t ${node["ip"]} "openssl x509 -req -days 3650 -in $path/server.csr -CA $pat
 #we don't need client keys here
 #now we have our certificates, we tell docker to use them.
 #this only work on OS with systemd
-ssh -t root@${node["ip"]} "sed -i '/ExecStart=\/usr\/bin\/docker/c\ExecStart=\/usr\/bin\/docker daemon --tlsverify --tlscacert=/home/#{user}/.docker/ca.pem --tlscert=/home/#{user}/.docker/server-cert.pem \
-  --tlskey=/home/#{user}/.docker/server-key.pem -H tcp://0.0.0.0:2376 -H fd:\/\/' /lib/systemd/system/docker.service"
+ssh -t root@${node["ip"]} "sed -i '/ExecStart=\/usr\/bin\/docker/c\ExecStart=\/usr\/bin\/docker daemon --tlsverify --tlscacert=/home/$user/.docker/ca.pem --tlscert=/home/$user/.docker/server-cert.pem \
+  --tlskey=/home/$user/.docker/server-key.pem -H tcp://0.0.0.0:2376 -H fd:\/\/' /lib/systemd/system/docker.service"
 #we replace the startup line for docker. We tell docker where are the certificates, and to listen on the port 2376, so we can access it from outside (see docker remote api)
 #the -H fd:// option tell docker to listen on local socket
 
 #restart the services
 ssh -t root@${node["ip"]} "systemctl daemon-reload && sudo systemctl restart docker.service"
 
-#Now, we launch our swarm cluster
-token=`docker run swarm:1.0.0 create`
-ssh -t ${node["ip"]} "docker run --name swarm_node -d swarm:1.0.0 join --addr=${node["ip"]}:2376 token://$token"
+#Step 6 : launch the cluster !!
 
-#launch the swarm manager, we mount our certs folder on the container
-docker run -d -p 2376:2375 -v ~/.docker/:/certs/ swarm:1.0.0 manage --tlsverify --tlscacert=/certs/ca.pem --tlscert=/certs/swarm-cert.pem --tlskey=/certs/swarm-key.pem token://$token
+chmod +x new_swarm.sh
+/bin/bash new_swarm.sh
 
-#is it working ?
+#Step 7 : is it working ?
 docker --tlsverify -H tcp://${swarm_master["hn"]}:2376 info
 
 #Run an ubuntu container with the docker remote API
-curl -H "Content-Type: application/json" -X POST -d '{"image":"ubuntu"}' https://allgo.dev:2376/containers/create --cert ~/.docker/cert.pem --key ~/.docker/key.pem --cacert ~/.docker/ca.pem
+#when the command is over, you should have a dead container on one of your worker, but not the master
+curl -H "Content-Type: application/json" -X POST -d '{"image":"ubuntu"}' https://${swarm_master["hn"]}:2376/containers/create --cert ~/.docker/cert.pem --key ~/.docker/key.pem --cacert ~/.docker/ca.pem
+
+#Step 8 : Eat a slice of pizza
+# it's always good
